@@ -56,7 +56,7 @@ namespace pathfinding::map_perturbator::utils {
 			//every time we perturbe an edge we change w of them (a->b and b->a).
 			//but on the frontend we required to change (say 50) edges we obviously mean 50 DIFFERENT edges.
 			//hence the actual perturbated density will be twice the normal edges
-			for (; this->edgeChanged<this->edgesToAlter; this->edgeChanged += 1) {
+			for (; this->edgeChanged<this->edgesToAlter;) {
 
 				debug("perturbating another edge ", this->edgeChanged);
 				//remember: this is just a copy of the edge in the graph. We still need to check it on the perturbated graph!

@@ -24,11 +24,11 @@ namespace pathfinding::map_perturbator::utils {
 		typedef AbstractPerturbator<G, V> Super;
 	protected:
 		uint32_t edgesToAlter;
-		Interval<int> range;
+		Interval<double> range;
 		const std::string& mode;
 		const Random& rnd;
 	public:
-		RandomPerturbator(bool allowEdgeCostDecrements, uint32_t edgesToAlter, const Interval<int>& range, const std::string& mode, const Random& rnd) : Super{allowEdgeCostDecrements}, edgesToAlter{edgesToAlter}, range{range}, mode{mode}, rnd{rnd} {
+		RandomPerturbator(bool allowEdgeCostDecrements, uint32_t edgesToAlter, const Interval<double>& range, const std::string& mode, const Random& rnd) : Super{allowEdgeCostDecrements}, edgesToAlter{edgesToAlter}, range{range}, mode{mode}, rnd{rnd} {
 
 		}
 		virtual ~RandomPerturbator() {

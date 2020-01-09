@@ -46,7 +46,7 @@ namespace pathfinding::map_perturbator::utils {
 		 */
 		bool allowEdgeCostDecrements;
 	public:
-		AbstractPerturbator(bool allowEdgeCostDecrements): edgeChanged{0} {
+		AbstractPerturbator(bool allowEdgeCostDecrements): edgeChanged{0}, allowEdgeCostDecrements{allowEdgeCostDecrements} {
 		}
 
 		virtual ~AbstractPerturbator() {
@@ -91,7 +91,7 @@ namespace pathfinding::map_perturbator::utils {
 
 			//ALTER SAID ARC
 
-			int randomNumber = random.next(perturbationEntity);
+			int randomNumber = random.nextInt(perturbationEntity);
 
 			//we need to change the arc
 			cost_t oldWeight = graph.getEdge(sourceId, sinkId).getCost();
@@ -110,7 +110,7 @@ namespace pathfinding::map_perturbator::utils {
 			if (!this->allowEdgeCostDecrements) {
 				if (newWeight < oldWeight) {
 					log_error("the perturbation may only increase weights, not decrease them! we're tyring to change", sourceId, "->", sinkId, "from", oldWeight, "to", newWeight);
-					throw cpp_utils::exceptions::ImpossibleException{"can't replace weight %ld with a smaller value %ld!", oldWeight, newWeight};
+					throw cpp_utils::exceptions::makeInvalidArgumentException("can't replace weight", oldWeight, "with a smaller value ", newWeight, "!");
 				}
 			}
 
@@ -118,6 +118,42 @@ namespace pathfinding::map_perturbator::utils {
 			//we have changed both edges
 			this->edgeChanged += 2;
 		}
+
+		virtual void perturbateArc(INonExtendableGraph<G, V, PerturbatedCost>& graph, nodeid_t sourceId, nodeid_t sinkId, const Interval<double>& perturbationEntity, const std::string& perturbationMode, Random random) {
+			if (graph.getEdge(sourceId, sinkId).isPerturbated()) {
+				throw cpp_utils::exceptions::ImpossibleException{"arc %ld->%ld has already been perturbated!", sourceId, sinkId};
+			}
+
+			//ALTER SAID ARC
+
+			double randomNumber = random.nextDouble(perturbationEntity);
+
+			//we need to change the arc
+			cost_t oldWeight = graph.getEdge(sourceId, sinkId).getCost();
+			cost_t newWeight = 0;
+
+			if (perturbationMode == std::string{"ASSIGN"}) {
+				newWeight = static_cast<cost_t>(randomNumber);
+			} else if (perturbationMode == std::string{"SUM"}) {
+				newWeight = oldWeight + static_cast<cost_t>(randomNumber);
+			} else if (perturbationMode == std::string{"MULTIPLY"}) {
+				newWeight = static_cast<cost_t>(static_cast<double>(oldWeight) * randomNumber);
+			} else {
+				throw cpp_utils::exceptions::InvalidScenarioException<std::string>{perturbationMode};
+			}
+
+			if (!this->allowEdgeCostDecrements) {
+				if (newWeight < oldWeight) {
+					log_error("the perturbation may only increase weights, not decrease them! we're tyring to change", sourceId, "->", sinkId, "from", oldWeight, "to", newWeight);
+					throw cpp_utils::exceptions::makeImpossibleException("can't replace the weight ", oldWeight, " with a smaller value", newWeight, "!");
+				}
+			}
+
+			graph.changeWeightUndirectedEdge(sourceId, sinkId, PerturbatedCost{newWeight, true});
+			//we have changed both edges
+			this->edgeChanged += 2;
+		}
+
 		//virtual std::vector<xyLoc> getOptimalPath(const AdjGraph& graph, const Mapper& mapper, const xyLoc& start, const xyLoc& goal) const;
 	public:
 		void cleanup() {

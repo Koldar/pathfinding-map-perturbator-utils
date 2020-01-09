@@ -83,7 +83,7 @@ namespace pathfinding::map_perturbator::utils {
 		 * @param perturbationMode how we need to interpret @c perturbationEntity
 		 * @param randomEngine random generator
 		 */
-		virtual void perturbateArc(INonExtendableGraph<G, V, PerturbatedCost>& graph, nodeid_t sourceId, nodeid_t sinkId, const Interval<int>& perturbationEntity, const std::string& perturbationMode, Random random) {
+		virtual void perturbateArc(INonExtendableGraph<G, V, PerturbatedCost>& graph, nodeid_t sourceId, nodeid_t sinkId, const Interval<int>& perturbationEntity, const std::string& perturbationMode, const Random& random) {
 
 			if (graph.getEdge(sourceId, sinkId).isPerturbated()) {
 				throw cpp_utils::exceptions::ImpossibleException{"arc %ld->%ld has already been perturbated!", sourceId, sinkId};
@@ -119,7 +119,7 @@ namespace pathfinding::map_perturbator::utils {
 			this->edgeChanged += 2;
 		}
 
-		virtual void perturbateArc(INonExtendableGraph<G, V, PerturbatedCost>& graph, nodeid_t sourceId, nodeid_t sinkId, const Interval<double>& perturbationEntity, const std::string& perturbationMode, Random random) {
+		virtual void perturbateArc(INonExtendableGraph<G, V, PerturbatedCost>& graph, nodeid_t sourceId, nodeid_t sinkId, const Interval<double>& perturbationEntity, const std::string& perturbationMode, const Random& random) {
 			if (graph.getEdge(sourceId, sinkId).isPerturbated()) {
 				throw cpp_utils::exceptions::ImpossibleException{"arc %ld->%ld has already been perturbated!", sourceId, sinkId};
 			}
@@ -127,6 +127,7 @@ namespace pathfinding::map_perturbator::utils {
 			//ALTER SAID ARC
 
 			double randomNumber = random.nextDouble(perturbationEntity);
+			critical("random number is", randomNumber, perturbationEntity);
 
 			//we need to change the arc
 			cost_t oldWeight = graph.getEdge(sourceId, sinkId).getCost();

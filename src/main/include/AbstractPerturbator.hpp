@@ -127,7 +127,7 @@ namespace pathfinding::map_perturbator::utils {
 			//ALTER SAID ARC
 
 			double randomNumber = random.nextDouble(perturbationEntity);
-			critical("random number is", randomNumber, perturbationEntity);
+			debug("random number is", randomNumber, perturbationEntity);
 
 			//we need to change the arc
 			cost_t oldWeight = graph.getEdge(sourceId, sinkId).getCost();

@@ -1,7 +1,14 @@
 #ifndef _PATHFINDINGMAPPERTURBATORUTILS_ABSTARCTPOINTCHOOSER_HEADER__
 #define _PATHFINDINGMAPPERTURBATORUTILS_ABSTARCTPOINTCHOOSER_HEADER__
 
+#include <cpp-utils/igraph.hpp>
+
+#include <pathfinding-utils/IPath.hpp>
+
 namespace pathfinding::map_perturbator::utils {
+
+    using namespace cpp_utils::graphs;
+    using namespace pathfinding;
 
     /**
      * @brief represents a class whose job is to fetch a point in the map
@@ -10,10 +17,8 @@ namespace pathfinding::map_perturbator::utils {
      * 
      * @tparam G paylaod of the graph
      * @tparam V type every vertex in the graph has associated
-     * @tparam E type every edge in the graph has associated
-     * @tparam GETCOST a function that convert E into cost_t
      */
-    template <typename G, typename V, typename E, typename GETCOST>
+    template <typename G, typename V>
     class AbstractPointChooser {
     public:
         /**
@@ -22,10 +27,9 @@ namespace pathfinding::map_perturbator::utils {
          * @param graph the map where we need to choose a point
          * @param start the start point of a query
          * @param goal the goal point of a query
-         * @param getCost a function that converts E into cost_t
          * @return nodeid_t the node we have chosen
          */
-        virtual nodeid_t choosePoint(const ImmutableGraph<G, V, E>& graph, nodeid_t start, nodeid_t goal, GETCOST getCost) = 0;
+        virtual nodeid_t choosePoint(const IImmutableGraph<G, V, cost_t>& graph, nodeid_t start, nodeid_t goal) = 0;
         /**
          * @brief get the path computed by the software (if any)
          * 
@@ -33,7 +37,7 @@ namespace pathfinding::map_perturbator::utils {
          * null if no path has been computed.
          */
         virtual const NodePath* getPathComputed() const = 0;
-    }
+    };
 
 }
 

@@ -5,11 +5,11 @@
 
 namespace pathfinding::map_perturbator::utils {
 
-    template <typename G, typename V, typename E, typename GETCOST>
-    class PointAlongOptimalPathPointChooser: AbstractPointChooser<G, V, E, GETCOST> {
+    template <typename G, typename V>
+    class PointAlongOptimalPathPointChooser: public AbstractPointChooser<G, V> {
     public:
-        typedef PointAlongOptimalPathPointChooser<G,V,E> This;
-        typedef AbstractPointChooser<G,V,E> Super;
+        typedef PointAlongOptimalPathPointChooser<G,V> This;
+        typedef AbstractPointChooser<G,V> Super;
     private:
         /**
          * @brief a interval which endpoints are between 0 and 1
@@ -19,25 +19,29 @@ namespace pathfinding::map_perturbator::utils {
          * For instance if it is [0,0.5] we will fetch a position in the first half of an optimal path
          * 
          */
-        Interval<double> whereToChoosePoint;
+        DoubleInterval whereToChoosePoint;
         /**
          * @brief cache containing the last optimal path computed
          * 
          */
         mutable NodePath optimalPathCache;
     public:
-        PointAlongOptimalPathPointChooser(Interval<double> whereToChoosePoint): whereToChoosePoint{whereToChoosePoint}, optimalPathCache{} {
+        PointAlongOptimalPathPointChooser(DoubleInterval whereToChoosePoint): whereToChoosePoint{whereToChoosePoint}, optimalPathCache{} {
 
         }
     public:
-        virtual nodeid_t choosePoint(const ImmutableGraph<G, V, E>& graph, nodeid_t start, nodeid_t goal, GETCOST getCost) {
-            auto point = Random::nextDouble(this->whereToChoosePoint);
+        virtual nodeid_t choosePoint(const IImmutableGraph<G, V, cost_t>& graph, nodeid_t start, nodeid_t goal) {
+            auto point = Random::next(this->whereToChoosePoint);
+            critical("the point we have chosen is", point);
             
             //compute an optimal path
-            this->optimalPath = getOptimalPathAsVertices(graph, start, goal, getCost);
-            auto positionInOptimal = floor(point * optimalPath.size());
-
-            return this->optimalPath.at(positionInOptimal);
+            costFunction_t<cost_t> mapper = [&](const cost_t& c) { return c;};
+            this->optimalPathCache = getOptimalPathAsVertices(graph, start, goal, mapper);
+            critical("DONE!");
+            critical("optimal path is", this->optimalPathCache);
+            auto positionInOptimal = floor(point * this->optimalPathCache.size());
+            critical("position chosen is", positionInOptimal);
+            return this->optimalPathCache.at(positionInOptimal);
         }
         /**
          * @brief get the path computed by the software (if any)
@@ -48,7 +52,7 @@ namespace pathfinding::map_perturbator::utils {
         virtual const NodePath* getPathComputed() const {
             return &this->optimalPathCache;
         }
-    }
+    };
 
 }
 

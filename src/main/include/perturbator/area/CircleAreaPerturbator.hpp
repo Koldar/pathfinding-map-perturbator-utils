@@ -1,5 +1,5 @@
-#ifndef _CPD_SEARCH_TESTER_AREA_PERTURBATOR_HEADER__
-#define _CPD_SEARCH_TESTER_AREA_PERTURBATOR_HEADER__
+#ifndef _PATHFINDINGMAPPERTURBATORUTILS_CIRCLEAREAPERTURBATOR_HEADER__
+#define _PATHFINDINGMAPPERTURBATORUTILS_CIRCLEAREAPERTURBATOR_HEADER__
 
 #include <string>
 
@@ -12,7 +12,8 @@
 
 #include <cpd-search/PerturbatedCost.hpp>
 
-#include "AbstractPerturbator.hpp"
+#include "AbstractAreaPerturbator.hpp"
+#include "AbstractPointChooser.hpp"
 
 namespace pathfinding::map_perturbator::utils {
 
@@ -22,7 +23,7 @@ namespace pathfinding::map_perturbator::utils {
 
 
     /**
-     * @brief perturbate an area circled shaped
+     * @brief perturbate an area circled shaped from the epicenter
      * 
      * each arc is perturbated using a normal distribution: edges near the epicenter are greatly affected
      * while edges far from it are almost unaffected
@@ -32,8 +33,8 @@ namespace pathfinding::map_perturbator::utils {
      */
     template <typename G, typename V>
     class CircleAreaPerturbator: public AbstractAreaPerturbator<G, V> {
-        using This = AreaPerturbator<G, V>;
-        using Super = AbstractPerturbator<G, V>;
+        using This = CircleAreaPerturbator<G, V>;
+        using Super = AbstractAreaPerturbator<G, V>;
     private:
 
 		Interval<int> range;
@@ -42,15 +43,20 @@ namespace pathfinding::map_perturbator::utils {
          * 
          */
         Interval<int> radius;
+        /**
+         * @brief Actual radius used while generating the perturbated graph
+         * 
+         */
+        mutable int actualRadius;
     public:
-        AreaPerturbator(const Interval<int>& range, const Interval<int>& radius, const Random& rnd, bool ensureStartGoalAreNotAffected) : Super{false, rnd, ensureStartGoalAreNotAffected, pointChooser}, range{range}, radius{radius} {
+        CircleAreaPerturbator(const Random& rnd, bool ensureStartGoalAreNotAffected, AbstractPointChooser<G,V>& pointChooser, const Interval<int>& range, const Interval<int>& radius) : Super{false, rnd, ensureStartGoalAreNotAffected, pointChooser}, range{range}, radius{radius}, actualRadius{0} {
 
         }
-        virtual ~AreaPerturbator() {
+        virtual ~CircleAreaPerturbator() {
 
         }
-        AreaPerturbator(const This& o) = delete;
-        AreaPerturbator(This&& o): Super{std:move(o)}, range{o.range}, radius{o.radius} {
+        CircleAreaPerturbator(const This& o) = delete;
+        CircleAreaPerturbator(This&& o): Super{std:move(o)}, range{o.range}, radius{o.radius}, actualRadius{o.actualRadius} {
             
         }
         This& operator =(const This& o) = delete;
@@ -58,32 +64,34 @@ namespace pathfinding::map_perturbator::utils {
             Super::operator =(::std::move(o));
             this->range = ::std::move(o.range);
             this->radius = ::std::move(o.radius);
+            this->actualRadius = ::std::move(o.actualRadius);
             return *this;
         }
     protected:
         virtual cpp_utils::vectorplus<std::tuple<nodeid_t, nodeid_t, int>> getEdgesToPerturbate(const IImmutableGraph<G, V, cost_t>& originalGraph, nodeid_t start, nodeid_t goal, nodeid_t epicenter) {
             //fetch the actual radius
-            auto actualRadius = Random::next(this->radius);
+            this->actualRadius = Random::next(this->radius);
 
             cpp_utils::vectorplus<std::tuple<nodeid_t, nodeid_t, int>> result{};
             this->performDFS(
                 originalGraph, 
                 epicenter, 
-                actualRadius, 
+                this->actualRadius, 
                 result,
-                startPath,
-                goalPath
+                start,
+                goal
             );
             return result;
         }
-        virtual void perturbateEdge(const IImmutableGraph<G, V, cost_t>& originalGraph, AdjacentGraph<G, V, PerturbatedCost>& graphToPerturbate, nodeid_t start, nodeid_t goal, nodeid_t epicenter, nodeid_t sourceOfEdgeToPerturbate, nodeid_t sinkOfedgeToPerturbate, int depthOfEdgeToPerturbate) {
-            double multiplier = this->getNewWeightInArea(depth, upper, actualRadius, 1, 10.0);
+        virtual void perturbateEdge(const IImmutableGraph<G, V, cost_t>& originalGraph, AdjacentGraph<G, V, PerturbatedCost>& graphToPerturbate, nodeid_t start, nodeid_t goal, nodeid_t epicenter, nodeid_t sourceOfEdgeToPerturbate, nodeid_t sinkOfedgeToPerturbate, int depthOfEdgeToPerturbate, cost_t originalWeight) {
+            auto upper = this->range.getUpperbound();
+            double multiplier = this->getNewWeightInArea(depthOfEdgeToPerturbate, upper, this->actualRadius, 1, 10.0);
             debug("multiplier is", multiplier);
-            Interval<int> singleton{static_cast<int>(static_cast<double>(oldWeight) * multiplier)};
-            debug("before was", oldWeight, "but now it will be", singleton.getLB());
+            Interval<int> singleton{static_cast<int>(static_cast<double>(originalWeight) * multiplier)};
+            debug("before was", originalWeight, "but now it will be", singleton.getLB());
 
             this->perturbateArc(
-                *graphToPerturbate,
+                graphToPerturbate,
                 sourceOfEdgeToPerturbate,
                 sinkOfedgeToPerturbate,
                 singleton,

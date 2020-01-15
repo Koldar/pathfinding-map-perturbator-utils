@@ -13,8 +13,11 @@
 #include <cpd-search/PerturbatedCost.hpp>
 
 #include "AbstractPerturbator.hpp"
+#include "AbstractPointChooser.hpp"
 
 namespace pathfinding::map_perturbator::utils {
+
+    using namespace pathfinding::search;
 
     /**
      * @brief exception to throw when you fetch the start node of a query and you didn't want it
@@ -41,26 +44,26 @@ namespace pathfinding::map_perturbator::utils {
      * @tparam V 
      */
     template <typename G, typename V>
-    class AbstractAreaPerturbator: AbstractPerturbator<G, V> {
+    class AbstractAreaPerturbator: public AbstractPerturbator<G, V> {
     public:
         using This = AbstractAreaPerturbator<G, V>;
         using Super = AbstractPerturbator<G, V>;
-    private:
+    protected:
         const Random& rnd;
         /**
          * @brief if true we will throw error if we're trying to change an edge hose endpoint is either the start/end of the query
          * 
          */
         bool ensureStartGoalAreNotAffected;
-        AbstractPointChooser& pointChooser;
+        AbstractPointChooser<G, V>& pointChooser;
         /**
          * @brief cache graph containing the original graph but with perturbated cost
          * 
          * null pointer if the cache has been created yet
          */
-        mutable std::unique_ptr<AdjacentGraph<G, V, PerturbatedCost>> perturbatedGraphCache;
+        mutable std::unique_ptr<IImmutableGraph<G, V, PerturbatedCost>> perturbatedGraphCache;
     public:
-        AbstractAreaPerturbator(bool allowEdgeCostDecrements, const Random& rnd, bool ensureStartGoalAreNotAffected, AbstractPointChooser& pointChooser) : Super{allowEdgeCostDecrements}, rnd{rnd}, ensureStartGoalAreNotAffected{ensureStartGoalAreNotAffected}, pointChooser{pointChooser}, perturbatedGraphCache{nullptr} {
+        AbstractAreaPerturbator(bool allowEdgeCostDecrements, const Random& rnd, bool ensureStartGoalAreNotAffected, AbstractPointChooser<G,V>& pointChooser) : Super{allowEdgeCostDecrements}, rnd{rnd}, ensureStartGoalAreNotAffected{ensureStartGoalAreNotAffected}, pointChooser{pointChooser}, perturbatedGraphCache{nullptr} {
 
         }
         virtual ~AbstractAreaPerturbator() {
@@ -106,17 +109,22 @@ namespace pathfinding::map_perturbator::utils {
         virtual AdjacentGraph<G, V, PerturbatedCost>* perturbateGraph(int experimentId, const GridMapScenarioExperiment& experiment, nodeid_t start, nodeid_t goal, const IImmutableGraph<G, V, cost_t>& originalGraph) {
             //build result
             if (this->perturbatedGraphCache == nullptr) {
-                auto p = originalGraph.mapEdges([&](const cost_t& c) { return PerturbatedCost{c, false};}));
-                this->perturbatedGraphCache = std::unique_ptr<AdjacentGraph<G, V, PerturbatedCost>>{p};
+                debug("cache is null. Create perturbatedGraphCache");
+                std::function<PerturbatedCost(const cost_t& c)> mapper =  [&](const cost_t& c) -> PerturbatedCost { return PerturbatedCost{c, false};};
+                auto p = originalGraph.mapEdges(mapper);
+                this->perturbatedGraphCache = std::move(p);
             }
             //copy the template perturbatedGraphTemplate
             AdjacentGraph<G, V, PerturbatedCost>* result = new AdjacentGraph<G, V, PerturbatedCost>{*this->perturbatedGraphCache};
 
             //choose the epicenter
             nodeid_t epicenter = this->pointChooser.choosePoint(originalGraph, start, goal);
+            debug("optimal path is", this->pointChooser.getPathComputed());
+            debug("epicenter is ", epicenter);
 
             //fetch the edges that we need to change
             cpp_utils::vectorplus<std::tuple<nodeid_t, nodeid_t, int>> edgesToPerturbate = this->getEdgesToPerturbate(originalGraph, start, goal, epicenter);
+            debug("edges to perturbate are", edgesToPerturbate.size());
 
             //ok, now we alter all arcs involving these nodes
             if (edgesToPerturbate.size() == 0) {
@@ -129,25 +137,26 @@ namespace pathfinding::map_perturbator::utils {
                 int depth = std::get<2>(edgeInfo);
 
                 if (this->ensureStartGoalAreNotAffected) {
-                    debug("we're affecting ", vertexId, "! start=", startPath, "end=", endPath, " depth=", ni.depth, "max depth= ", maxDepth);
-                    if (vertexId == startPath) {
+                    if (sinkId == start) {
                         throw StartNodeInterceptedException{};
                     }
-                    if (vertexId == endPath) {
+                    if (sinkId == goal) {
                         throw GoalNodeInterceptedException{};
                     }
                 }
 
-
                 cost_t oldWeight = originalGraph.getEdge(sourceId, sinkId);
 
+                debug("we're affecting ", sourceId, "->", sinkId, "! start=", start, "end=", goal, " depth=", depth, "(oldweight is", oldWeight, ")");
                 this->perturbateEdge(
                     originalGraph, *result,
                     start, goal, epicenter,
                     sourceId, sinkId, depth,
-                    originalWeight
+                    oldWeight
                 );
             }
+
+            return result;
         }
         void performDFS(const IImmutableGraph<G, V, cost_t>& graph, nodeid_t epicenter, int maxDepth, cpp_utils::vectorplus<std::tuple<nodeid_t, nodeid_t, int>>& edges, nodeid_t startPath, nodeid_t endPath) const {
             std::vector<bool> visited(graph.numberOfVertices(), false);
@@ -195,6 +204,8 @@ namespace pathfinding::map_perturbator::utils {
             }
         }
 
-    }
+    };
 
 }
+
+#endif

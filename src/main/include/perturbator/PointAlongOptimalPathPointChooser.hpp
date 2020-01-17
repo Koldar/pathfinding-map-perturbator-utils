@@ -32,15 +32,15 @@ namespace pathfinding::map_perturbator::utils {
     public:
         virtual nodeid_t choosePoint(const IImmutableGraph<G, V, cost_t>& graph, nodeid_t start, nodeid_t goal) {
             auto point = Random::next(this->whereToChoosePoint);
-            critical("the point we have chosen is", point);
+            info("the point we have chosen is", point);
             
             //compute an optimal path
             costFunction_t<cost_t> mapper = [&](const cost_t& c) { return c;};
             this->optimalPathCache = getOptimalPathAsVertices(graph, start, goal, mapper);
-            critical("DONE!");
-            critical("optimal path is", this->optimalPathCache);
+            debug("DONE!");
+            debug("optimal path is", this->optimalPathCache);
             auto positionInOptimal = floor(point * this->optimalPathCache.size());
-            critical("position chosen is", positionInOptimal);
+            debug("position chosen is", positionInOptimal);
             return this->optimalPathCache.at(positionInOptimal);
         }
         /**
